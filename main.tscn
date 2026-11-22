@@ -1,7 +1,7 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://bridge.gd" id="1"]
+[ext_resource type="Script" path="res://market.gd" id="1"]
 
-[node name="BridgeMarket" type="Node2D"]
+[node name="TownMarket" type="Node2D"]
 texture_filter = 1
 script = ExtResource("1")

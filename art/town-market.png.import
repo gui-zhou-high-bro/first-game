@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dpybtaqoyqn4i"
-path="res://.godot/imported/huajiang.png-d59356a76c7573b881254ddc4b81c0db.ctex"
+uid="uid://bgpiofqrtk32c"
+path="res://.godot/imported/town-market.png-8b82a651922bd43d5944c52cff82dad7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://huajiang.png"
-dest_files=["res://.godot/imported/huajiang.png-d59356a76c7573b881254ddc4b81c0db.ctex"]
+source_file="res://art/town-market.png"
+dest_files=["res://.godot/imported/town-market.png-8b82a651922bd43d5944c52cff82dad7.ctex"]
 
 [params]
 
