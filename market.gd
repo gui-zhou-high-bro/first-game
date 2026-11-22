@@ -9,7 +9,7 @@ const STREET = 374
 const INTRO = [
 	["小惠", "醒啦？你守着锅都能睡着。再不翻面，洋芋粑要煎成锅巴咯。", "我一睁眼，青梅竹马小惠正俯身看着我。隔着水泥路，对面摊贩正吆喝。"],
 	["小航", "小惠？我不是在集团五十周年庆上，吃了发芽洋芋做的粑粑就……", "上一世，我垄断了全世界的洋芋粑。这一世，我还在镇上守着自己的小摊。"],
-	["洋芋粑系统", "叮！洋芋粑系统已激活。", "小惠：小航，你还要在这儿发多久的呆？收摊啦，该上学了。"],
+	["洋芋粑系统", "叮！洋芋粑系统已激活。", "小惠：小航，你还要在这儿发多久的呆？收摊啦。明早我来叫你，一起上学。"],
 ]
 
 var crowd := AudioStreamPlayer.new()
@@ -64,7 +64,7 @@ func _interact() -> void:
 	if phase == Phase.INTRO:
 		_advance_intro()
 	elif talked_to_xiaohui:
-		get_tree().change_scene_to_file("res://school.tscn")
+		get_tree().change_scene_to_file("res://bedroom.tscn")
 	elif hero_x >= 116.0 and hero_x <= 310.0:
 		talked_to_xiaohui = true
 		line_one = "小航：给，你的洋芋粑。跟每天一样，趁热吃。"
@@ -89,7 +89,7 @@ func _finish_intro() -> void:
 	phase = Phase.WALK
 	elapsed = 0.0
 	line_one = "你回过神，锅里的洋芋粑还滋啦响。小惠敲了敲你的锅铲。"
-	line_two = "和小惠说话，然后一起去学校。"
+	line_two = "和小惠说话，收摊后回家。"
 
 func _draw_intro() -> void:
 	draw_texture_rect(FIRST_PERSON, Rect2(0, 0, 960, 540), false)
@@ -162,4 +162,4 @@ func _draw() -> void:
 	_type(line_two, 46, 431, 15, MINT)
 	_type("A / D 或 ← / → 移动     ·     R 重开", 46, 475, 15, GOLD)
 	_button_frame(Rect2(746, 441, 168, 47), true)
-	_type("E  一起去上学" if talked_to_xiaohui else "E  互动", 763, 472, 18)
+	_type("E  回家" if talked_to_xiaohui else "E  互动", 763, 472, 18)

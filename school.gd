@@ -1,7 +1,9 @@
 extends "res://game_canvas.gd"
 
 enum Phase { ARRIVAL, MEMORY, CONFRONTATION, BATTLE, VICTORY, DEFEAT, AFTERMATH, DECISION, DONE }
-enum ExamPlan { UNDECIDED, SAME_SCHOOL, ORIGINAL_PATH }
+enum ExamPlan { UNDECIDED, SAME_SCHOOL, ORIGINAL_PATH, HELP_XIAOHUI }
+
+const RunProgress = preload("res://chapter_progress.gd")
 
 const BACKGROUND = preload("res://art/school-gate.png")
 const FLOOR_Y := 369
@@ -33,6 +35,17 @@ var effect_text := ""
 var speaker := "小惠"
 var line := "你每天都留一个给我，今天记得也给自己留一个。"
 var detail := "初三上学期快结束了。小航递过热乎的洋芋粑，和小惠并肩去上学。"
+
+func _ready() -> void:
+	super._ready()
+	if _study_training():
+		snacks = 0
+
+func _study_training() -> bool:
+	return RunProgress.upgrade == RunProgress.Upgrade.STUDY
+
+func _choice_count() -> int:
+	return 3 if _study_training() else 2
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -75,7 +88,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_act(action)
 					return
 		elif phase == Phase.DECISION:
-			for choice in range(2):
+			for choice in range(_choice_count()):
 				if _choice_rect(choice).has_point(cursor):
 					_choose_school(choice)
 					return
@@ -98,8 +111,15 @@ func _advance() -> void:
 			phase = Phase.CONFRONTATION
 			speaker = "小惠"
 			line = "别挡路。我说过了，别再来找我。"
-			detail = "混混头子和两个跟班仍堵在前面。小航认出了那张脸。"
+			detail = "小航认出那几个混混。值班老师就在校门边。" if _study_training() else "混混头子和两个跟班仍堵在前面。小航认出了那张脸。"
 		Phase.CONFRONTATION:
+			if _study_training():
+				phase = Phase.AFTERMATH
+				xiaohui_x = 354.0
+				speaker = "小惠"
+				line = "老师过来了。他们刚才一看见老师，话都说不出来。"
+				detail = "小航叫住了值班老师。老师把人带走，小航和小惠一起进了校门。"
+				return
 			phase = Phase.BATTLE
 			xiaohui_x = 315.0
 			speaker = "小航"
@@ -124,6 +144,8 @@ func _advance() -> void:
 			get_tree().reload_current_scene()
 
 func _choose_school(choice: int) -> void:
+	if phase != Phase.DECISION or choice < 0 or choice >= _choice_count():
+		return
 	match choice:
 		0:
 			exam_plan = ExamPlan.SAME_SCHOOL
@@ -133,8 +155,10 @@ func _choose_school(choice: int) -> void:
 			exam_plan = ExamPlan.ORIGINAL_PATH
 			line = "中考我会照常考，像上一世一样争取进省重点。"
 			detail = "小航决定沿着上一世的升学路线走。至于小惠，这回他想主动一点。"
-		_:
-			return
+		2:
+			exam_plan = ExamPlan.HELP_XIAOHUI
+			line = "我已经能把难题想明白了。我去问小惠，愿不愿意一起备考。"
+			detail = "小航决定帮小惠梳理错题。两个人都正常考，一起争取省重点。"
 	phase = Phase.DONE
 	speaker = "小航"
 	_sound(440.0, 620.0, 0.25)
@@ -223,6 +247,8 @@ func _action_rect(index: int) -> Rect2:
 	return Rect2(46 + index * 293, 446, 280, 55)
 
 func _choice_rect(index: int) -> Rect2:
+	if _study_training():
+		return _action_rect(index)
 	return Rect2(46 + index * 441, 446, 427, 55)
 
 func _draw() -> void:
@@ -250,7 +276,7 @@ func _draw_students() -> void:
 	_person(xiaohui_x, FLOOR_Y - 4, Color("#76649e"), Color("#453038"), 1, false, xiaohui_step)
 	_rect(xiaohui_x + 5, FLOOR_Y - 33 - xiaohui_step * 2, 4, 3, GOLD)
 	_person(hero_x, FLOOR_Y, Color("#498d96"), Color("#3a3635"), facing, true, step)
-	if phase == Phase.DECISION or phase == Phase.DONE:
+	if phase == Phase.DECISION or phase == Phase.DONE or (_study_training() and phase == Phase.AFTERMATH):
 		return
 	for index in range(enemy_hp.size()):
 		var x: float = ENEMY_X[index]
@@ -301,9 +327,9 @@ func _draw_dialogue() -> void:
 			_type(ACTION_LABELS[action], bounds.position.x + 14, 468, 18, text_color)
 			_type(summaries[action], bounds.position.x + 14, 491, 14, GOLD if enabled else text_color)
 	elif phase == Phase.DECISION:
-		var labels := ["1  故意考差", "2  正常发挥"]
-		var outcomes := ["和小惠去同一所高中", "走上一世的路，争取省重点"]
-		for choice in range(labels.size()):
+		var labels := ["1  故意考差", "2  正常发挥", "3  帮助小惠"]
+		var outcomes := ["和小惠去同一所高中", "走上一世的路，争取省重点", "帮她一起备考，争取省重点"]
+		for choice in range(_choice_count()):
 			var bounds := _choice_rect(choice)
 			_button_frame(bounds, true)
 			_type(labels[choice], bounds.position.x + 14, 468, 18)
@@ -317,6 +343,8 @@ func _draw_dialogue() -> void:
 		if phase == Phase.ARRIVAL:
 			label = "E  到校门口"
 			_type("A / D 或 ← / → 往前走", 46, 477, 15, GOLD)
+		elif phase == Phase.CONFRONTATION and _study_training():
+			label = "E  找值班老师"
 		elif phase == Phase.DEFEAT:
 			label = "E  再试一次"
 		_type(label, 762, 480, 17)
