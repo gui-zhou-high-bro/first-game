@@ -64,11 +64,11 @@ func _interact() -> void:
 	if phase == Phase.INTRO:
 		_advance_intro()
 	elif talked_to_xiaohui:
-		get_tree().change_scene_to_file("res://bedroom.tscn")
+		get_tree().change_scene_to_file("res://cooking.tscn")
 	elif hero_x >= 116.0 and hero_x <= 310.0:
 		talked_to_xiaohui = true
 		line_one = "小航：给，你的洋芋粑。跟每天一样，趁热吃。"
-		line_two = "小惠接过纸包，笑着等他收摊。"
+		line_two = "小惠接过纸包。又有三位客人停在摊前。"
 		_sound(440.0, 660.0, 0.18)
 	else:
 		line_one = "小惠还在洋芋粑摊前等你。"
@@ -89,7 +89,7 @@ func _finish_intro() -> void:
 	phase = Phase.WALK
 	elapsed = 0.0
 	line_one = "你回过神，锅里的洋芋粑还滋啦响。小惠敲了敲你的锅铲。"
-	line_two = "和小惠说话，收摊后回家。"
+	line_two = "和小惠说话，然后给客人做洋芋粑。"
 
 func _draw_intro() -> void:
 	draw_texture_rect(FIRST_PERSON, Rect2(0, 0, 960, 540), false)
@@ -162,4 +162,4 @@ func _draw() -> void:
 	_type(line_two, 46, 431, 15, MINT)
 	_type("A / D 或 ← / → 移动     ·     R 重开", 46, 475, 15, GOLD)
 	_button_frame(Rect2(746, 441, 168, 47), true)
-	_type("E  回家" if talked_to_xiaohui else "E  互动", 763, 472, 18)
+	_type("E  开摊接单" if talked_to_xiaohui else "E  互动", 763, 472, 18)
