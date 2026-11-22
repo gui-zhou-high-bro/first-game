@@ -70,13 +70,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _choice_rect(choice).has_point(cursor):
 					_choose(choice)
 					return
-		elif phase == Phase.TALK and CONTINUE_BUTTON.has_point(cursor):
+		elif CONTINUE_BUTTON.has_point(cursor):
 			_advance()
 
 func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _advance() -> void:
+	if phase == Phase.DONE:
+		get_tree().change_scene_to_file("res://hallway.tscn")
+		return
 	if phase != Phase.TALK:
 		return
 	if card_index + 1 == classroom_lines.size():
@@ -143,3 +146,5 @@ func _draw_dialogue() -> void:
 			_type(OPTION_DETAILS[choice], bounds.position.x + 14, 491, 14, GOLD)
 	else:
 		_type("已决定中考路线     ·     R 重看本场对话", 46, 477, 15, GOLD)
+		_button_frame(CONTINUE_BUTTON, true)
+		_type("E  放学后", 762, 480, 17)
