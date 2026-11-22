@@ -1,0 +1,16 @@
+config_version=5
+
+[application]
+config/name="过桥赶场"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
