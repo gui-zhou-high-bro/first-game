@@ -1,7 +1,6 @@
 extends "res://game_canvas.gd"
 
-enum Phase { ARRIVAL, MEMORY, CONFRONTATION, BATTLE, VICTORY, DEFEAT, AFTERMATH, DECISION, DONE }
-enum ExamPlan { UNDECIDED, SAME_SCHOOL, ORIGINAL_PATH, HELP_XIAOHUI }
+enum Phase { ARRIVAL, MEMORY, CONFRONTATION, BATTLE, VICTORY, DEFEAT, AFTERMATH }
 
 const RunProgress = preload("res://chapter_progress.gd")
 
@@ -26,7 +25,6 @@ var turn := 0
 var enemy_hp := ENEMY_MAX.duplicate()
 var power := 0
 var snacks := 1
-var exam_plan := ExamPlan.UNDECIDED
 var impact := 0.0
 var hit_mask := 0
 var effect_x := 0.0
@@ -43,9 +41,6 @@ func _ready() -> void:
 
 func _study_training() -> bool:
 	return RunProgress.upgrade == RunProgress.Upgrade.STUDY
-
-func _choice_count() -> int:
-	return 3 if _study_training() else 2
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -75,22 +70,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_E, KEY_ENTER:
 				_advance()
 			KEY_1, KEY_2, KEY_3:
-				var action := ACTION_KEYS.find(event.physical_keycode)
-				if phase == Phase.DECISION:
-					_choose_school(action)
-				else:
-					_act(action)
+				_act(ACTION_KEYS.find(event.physical_keycode))
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var cursor := get_global_mouse_position()
 		if phase == Phase.BATTLE:
 			for action in range(ACTION_KEYS.size()):
 				if _action_rect(action).has_point(cursor):
 					_act(action)
-					return
-		elif phase == Phase.DECISION:
-			for choice in range(_choice_count()):
-				if _choice_rect(choice).has_point(cursor):
-					_choose_school(choice)
 					return
 		elif Rect2(744, 452, 168, 44).has_point(cursor):
 			_advance()
@@ -133,35 +119,9 @@ func _advance() -> void:
 			detail = "小惠把掉在地上的书包捡起来。上课铃响了，两个人一起进了校门。"
 			_sound(392.0, 523.0, 0.35)
 		Phase.AFTERMATH:
-			phase = Phase.DECISION
-			impact = 0.0
-			hero_x = 610.0
-			xiaohui_x = 661.0
-			speaker = "小航"
-			line = "初三上学期快结束了。下学期就要准备中考。"
-			detail = "上一世，我超常发挥进了省重点高中；小惠没考好，去了普通高中。"
+			get_tree().change_scene_to_file("res://classroom.tscn")
 		Phase.DEFEAT:
 			get_tree().reload_current_scene()
-
-func _choose_school(choice: int) -> void:
-	if phase != Phase.DECISION or choice < 0 or choice >= _choice_count():
-		return
-	match choice:
-		0:
-			exam_plan = ExamPlan.SAME_SCHOOL
-			line = "这一次，我打算故意考差一点，跟小惠上同一所高中。"
-			detail = "小航决定改变自己的中考结果。这次，他想离她近一点。"
-		1:
-			exam_plan = ExamPlan.ORIGINAL_PATH
-			line = "中考我会照常考，像上一世一样争取进省重点。"
-			detail = "小航决定沿着上一世的升学路线走。至于小惠，这回他想主动一点。"
-		2:
-			exam_plan = ExamPlan.HELP_XIAOHUI
-			line = "我已经能把难题想明白了。我去问小惠，愿不愿意一起备考。"
-			detail = "小航决定帮小惠梳理错题。两个人都正常考，一起争取省重点。"
-	phase = Phase.DONE
-	speaker = "小航"
-	_sound(440.0, 620.0, 0.25)
 
 func _first_enemy() -> int:
 	for index in range(enemy_hp.size()):
@@ -246,11 +206,6 @@ func _act(action: int) -> void:
 func _action_rect(index: int) -> Rect2:
 	return Rect2(46 + index * 293, 446, 280, 55)
 
-func _choice_rect(index: int) -> Rect2:
-	if _study_training():
-		return _action_rect(index)
-	return Rect2(46 + index * 441, 446, 427, 55)
-
 func _draw() -> void:
 	draw_texture_rect(BACKGROUND, Rect2(0, 0, 960, 540), false)
 	_draw_students()
@@ -276,7 +231,7 @@ func _draw_students() -> void:
 	_person(xiaohui_x, FLOOR_Y - 4, Color("#76649e"), Color("#453038"), 1, false, xiaohui_step)
 	_rect(xiaohui_x + 5, FLOOR_Y - 33 - xiaohui_step * 2, 4, 3, GOLD)
 	_person(hero_x, FLOOR_Y, Color("#498d96"), Color("#3a3635"), facing, true, step)
-	if phase == Phase.DECISION or phase == Phase.DONE or (_study_training() and phase == Phase.AFTERMATH):
+	if _study_training() and phase == Phase.AFTERMATH:
 		return
 	for index in range(enemy_hp.size()):
 		var x: float = ENEMY_X[index]
@@ -326,16 +281,7 @@ func _draw_dialogue() -> void:
 			var text_color := LIGHT if enabled else Color("#a1aca3")
 			_type(ACTION_LABELS[action], bounds.position.x + 14, 468, 18, text_color)
 			_type(summaries[action], bounds.position.x + 14, 491, 14, GOLD if enabled else text_color)
-	elif phase == Phase.DECISION:
-		var labels := ["1  故意考差", "2  正常发挥", "3  帮助小惠"]
-		var outcomes := ["和小惠去同一所高中", "走上一世的路，争取省重点", "帮她一起备考，争取省重点"]
-		for choice in range(_choice_count()):
-			var bounds := _choice_rect(choice)
-			_button_frame(bounds, true)
-			_type(labels[choice], bounds.position.x + 14, 468, 18)
-			_type(outcomes[choice], bounds.position.x + 14, 491, 14, GOLD)
-	elif phase == Phase.DONE:
-		_type("已决定中考路线     ·     R 重玩本关", 46, 477, 15, GOLD)
+
 	else:
 		var button := Rect2(744, 452, 168, 44)
 		_button_frame(button, true)
@@ -347,4 +293,6 @@ func _draw_dialogue() -> void:
 			label = "E  找值班老师"
 		elif phase == Phase.DEFEAT:
 			label = "E  再试一次"
+		elif phase == Phase.AFTERMATH:
+			label = "E  去教室"
 		_type(label, 762, 480, 17)
