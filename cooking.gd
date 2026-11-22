@@ -1,6 +1,6 @@
 extends "res://game_canvas.gd"
 
-enum Step { WASH, PEEL, STEAM, MIX, SHAPE, FRY, SAUCE, REVIEW, CLOSED }
+enum Step { WASH, PEEL, STEAM, MIX, SHAPE, FRY, SAUCE, REVIEW, CLOSED, QUEUE }
 
 const MARKET = preload("res://art/town-market.png")
 const ORDERS := [
@@ -16,6 +16,12 @@ const SUBMIT := Rect2(711, 451, 207, 51)
 const COOK_MIN := 2.7
 const COOK_MAX := 4.5
 const STEAM_LENGTH := 2.6
+const HANDOFF_SECONDS := 1.1
+const COUNTER_X := 391.0
+const QUEUE_GAP := 157.0
+const CUSTOMER_Y := 390
+const CUSTOMER_COATS := [Color("#a96679"), Color("#526e68"), Color("#716382")]
+const CUSTOMER_HATS := [Color("#733d46"), Color("#434d52"), Color("#57423b")]
 const PAPER := Color("#f5dfb5")
 const WOOD := Color("#986247")
 const DARK_WOOD := Color("#56382c")
@@ -23,7 +29,7 @@ const PALE := Color("#d5bb91")
 const CARROT := Color("#fc9a49")
 const ONION := Color("#94b962")
 
-var step := Step.WASH
+var step := Step.QUEUE
 var order_index := 0
 var progress := 0
 var carrots := false
@@ -37,9 +43,13 @@ var sides: Array[float] = []
 var scores: Array[int] = []
 var review: Array[String] = []
 
+func _ready() -> void:
+	super._ready()
+	Music.play("cooking")
+
 func _process(delta: float) -> void:
 	elapsed += delta
-	if (step == Step.STEAM and steam_started) or (step == Step.FRY and fry_side >= 0):
+	if (step == Step.STEAM and steam_started) or (step == Step.FRY and fry_side >= 0) or step == Step.REVIEW:
 		stage_time = minf(stage_time + delta, 30.0)
 	queue_redraw()
 
@@ -88,12 +98,17 @@ func _can_advance() -> bool:
 			return not steam_started or stage_time >= STEAM_LENGTH
 		Step.SAUCE:
 			return sauce >= 0
+		Step.REVIEW:
+			return stage_time >= HANDOFF_SECONDS
 	return true
 
 func _advance() -> void:
 	if not _can_advance():
 		return
 	match step:
+		Step.QUEUE:
+			step = Step.WASH
+			_sound(358.0, 550.0, 0.17)
 		Step.WASH:
 			_work_toward(3, Step.PEEL, 310.0)
 		Step.PEEL:
@@ -167,6 +182,7 @@ func _review_order() -> void:
 		review.append("配料和酱也都对上了")
 	scores.append(grade)
 	step = Step.REVIEW
+	stage_time = 0.0
 	_sound(440.0, 660.0, 0.28)
 
 func _next_order() -> void:
@@ -184,6 +200,8 @@ func _next_order() -> void:
 
 func _button_text() -> String:
 	match step:
+		Step.QUEUE:
+			return "E  接单"
 		Step.WASH:
 			return "E  冲洗 (%d/3)" % progress
 		Step.PEEL:
@@ -201,6 +219,8 @@ func _button_text() -> String:
 		Step.SAUCE:
 			return "E  上盘交单"
 		Step.REVIEW:
+			if not _can_advance():
+				return "交餐中"
 			return "E  收好摊位" if order_index + 1 == ORDERS.size() else "E  接下一单"
 		Step.CLOSED:
 			return "E  收摊回家"
@@ -224,8 +244,6 @@ func _hint() -> String:
 			return "计时到绿色区间时翻面或起锅。"
 		Step.SAUCE:
 			return "按订单选一种酱，确认后再上盘。"
-		Step.REVIEW:
-			return "看看客人的评价，再做下一单。"
 		Step.CLOSED:
 			return "小惠：最后一块给自己留着，回家啦。"
 	return ""
@@ -234,12 +252,90 @@ func _option_rect(index: int) -> Rect2:
 	return Rect2(308 + index * 130, 445, 122, 47)
 
 func _draw() -> void:
+	if step == Step.QUEUE or step == Step.REVIEW:
+		_draw_queue()
+		return
 	draw_texture_rect(MARKET, Rect2(0, 0, 960, 540), false)
-	_rect(0, 0, 960, 540, Color("#17292bb3"))
+	_rect(0, 0, 960, 540, Color("#17292b8c"))
 	_draw_header()
 	_draw_order()
 	_draw_work()
 	_draw_controls()
+
+func _draw_queue() -> void:
+	draw_texture_rect(MARKET, Rect2(0, 0, 960, 540), false)
+	_rect(26, 24, 258, 73, INK)
+	_rect(26, 24, 5, 73, GOLD)
+	_type("贵州 · 花江镇", 46, 51, 17, GOLD)
+	_type("小航的洋芋粑摊", 46, 81, 24)
+
+	var serving := step == Step.REVIEW
+	var first_waiting := order_index + int(serving)
+	var waiting := ORDERS.size() - first_waiting
+	_rect(723, 24, 211, 60, INK)
+	_type("已出餐  %d / %d" % [scores.size(), ORDERS.size()], 742, 48, 16, GOLD)
+	_type("排队  %d 人" % waiting, 742, 70, 15, LIGHT)
+
+	_draw_street_stall()
+	var filing := 1.0 if not serving else _queue_progress()
+	for index in range(first_waiting, ORDERS.size()):
+		var slot := index - first_waiting
+		var x := COUNTER_X + QUEUE_GAP * (slot + 1.0 - filing)
+		var pace := 0 if filing >= 1.0 else int(stage_time * 11.0) % 2
+		_person(x, CUSTOMER_Y, CUSTOMER_COATS[index], CUSTOMER_HATS[index], -1, true, pace)
+		_customer_label(x, ORDERS[index][0], slot == 0)
+	if serving and filing < 1.0:
+		var exiting := lerpf(COUNTER_X, 1040.0, filing)
+		_person(exiting, CUSTOMER_Y + 9, CUSTOMER_COATS[order_index], CUSTOMER_HATS[order_index], 1, true, int(stage_time * 11.0) % 2)
+		_rect(exiting + 15, CUSTOMER_Y - 12, 15, 10, PAPER)
+		_rect(exiting + 16, CUSTOMER_Y - 13, 12, 3, GOLD)
+
+	_rect(26, 407, 908, 113, INK)
+	_rect(26, 407, 908, 2, GOLD)
+	if serving:
+		_type("%s  ·  本单 %d 分" % [ORDERS[order_index][0], scores.back()], 46, 444, 21, GOLD)
+		_type("。".join(review), 46, 472, 16, MINT)
+		if waiting > 0:
+			_type("%s走到摊前了。" % ORDERS[first_waiting][0] if filing >= 1.0 else "客人拿到洋芋粑，后面的人往前补位。", 46, 497, 14, PALE)
+		else:
+			_type("这轮排队的客人都拿到洋芋粑了。", 46, 497, 14, PALE)
+	else:
+		_type(ORDERS[order_index][0], 46, 444, 20, GOLD)
+		_type(_customer_request(), 46, 475, 19, LIGHT)
+	_button_frame(SUBMIT, _can_advance())
+	_type(_button_text(), 728, 483, 17, LIGHT if _can_advance() else PALE)
+
+func _queue_progress() -> float:
+	return smoothstep(0.0, HANDOFF_SECONDS, stage_time)
+
+func _customer_request() -> String:
+	var order: Array = ORDERS[order_index]
+	var filling := "胡萝卜碎和葱花都要" if order[1] and order[2] else ("只加胡萝卜碎" if order[1] else "只加葱花")
+	return "来一个洋芋粑，%s，加%s。" % [filling, SAUCES[order[3]]]
+
+func _customer_label(x: float, label: String, first: bool) -> void:
+	var width := maxf(88.0, label.length() * 15.0 + 18.0)
+	_rect(x - width * 0.5, CUSTOMER_Y - 93, width, 26, INK)
+	_type(label, x - width * 0.5 + 9, CUSTOMER_Y - 75, 15, GOLD if first else PALE)
+
+func _draw_street_stall() -> void:
+	_person(220, CUSTOMER_Y - 6, Color("#498d96"), Color("#3a3635"), 1, true, 0)
+	_rect(116, 266, 207, 23, DARK_WOOD)
+	for panel in range(7):
+		var color := Color("#b95848") if panel % 2 == 0 else PAPER
+		_rect(115 + panel * 30, 260, 30, 20, color)
+	_rect(124, 281, 7, 72, DARK_WOOD)
+	_rect(310, 281, 7, 72, DARK_WOOD)
+	_rect(164, 227, 110, 34, INK)
+	_rect(164, 227, 110, 3, GOLD)
+	_type("洋芋粑", 193, 251, 20, GOLD)
+	_rect(123, 356, 200, 40, DARK_WOOD)
+	_rect(125, 354, 194, 7, WOOD)
+	_rect(125, 349, 200, 5, PAPER)
+	_disk(Vector2(260, 346), 40, 11, INK)
+	for cake in range(3):
+		_disk(Vector2(240 + cake * 20, 344), 9, 4, Color("#edb15f"))
+
 
 func _draw_header() -> void:
 	_rect(26, 18, 908, 66, INK)
@@ -267,6 +363,7 @@ func _draw_order() -> void:
 	_type("酱料", 46, 318, 15, DARK_WOOD)
 	_rect(46, 332, 18, 15, SAUCE_COLORS[order[3]])
 	_type(SAUCES[order[3]], 74, 346, 18, INK)
+	_type("后面还有 %d 位客人" % (ORDERS.size() - order_index - 1), 46, 377, 13, DARK_WOOD)
 
 func _draw_work() -> void:
 	draw_rect(WORK, DARK_WOOD)
@@ -298,12 +395,6 @@ func _draw_work() -> void:
 				_draw_gauge(stage_time / 7.0, true)
 		Step.SAUCE:
 			_draw_plate(center)
-		Step.REVIEW:
-			_draw_plate(center - Vector2(128, 0))
-			_rect(640, 156, 259, 169, PAPER)
-			_type("本单评价  %d 分" % scores.back(), 659, 190, 22, INK)
-			for index in range(review.size()):
-				_type(review[index], 659, 227 + 26 * index, 15, DARK_WOOD)
 		Step.CLOSED:
 			_rect(393, 147, 438, 198, PAPER)
 			_type("今天卖完了", 416, 185, 26, INK)
