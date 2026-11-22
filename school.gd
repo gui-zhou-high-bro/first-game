@@ -36,6 +36,7 @@ var detail := "初三上学期快结束了。小航递过热乎的洋芋粑，�
 
 func _ready() -> void:
 	super._ready()
+	Music.play("school")
 	if _study_training():
 		snacks = 0
 
@@ -112,12 +113,14 @@ func _advance() -> void:
 			line = "小惠，往后站一点。这回我知道怎么应付了。"
 			detail = "系统提示：吃下洋芋粑，强化接下来三次出招。"
 			_sound(230.0, 130.0, 0.24)
+			Music.play("battle")
 		Phase.VICTORY:
 			phase = Phase.AFTERMATH
 			speaker = "小航"
 			line = "上一世，到这儿我就进医院了。这一世，真的不一样了。"
 			detail = "小惠把掉在地上的书包捡起来。上课铃响了，两个人一起进了校门。"
 			_sound(392.0, 523.0, 0.35)
+			Music.play("school")
 		Phase.AFTERMATH:
 			get_tree().change_scene_to_file("res://classroom.tscn")
 		Phase.DEFEAT:

@@ -32,6 +32,7 @@ func _ready() -> void:
 	add_child(crowd)
 	if DisplayServer.get_name() != "headless":
 		crowd.play()
+	Music.play("market")
 
 func _process(delta: float) -> void:
 	elapsed += delta

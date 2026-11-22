@@ -46,6 +46,7 @@ func _ready() -> void:
 	super._ready()
 	RunProgress.exam_plan = RunProgress.ExamPlan.UNDECIDED
 	classroom_lines = CLASSROOM_ENTRY + (AFTER_TEACHER if _study_training() else AFTER_FIGHT)
+	Music.play("classroom")
 
 func _study_training() -> bool:
 	return RunProgress.upgrade == RunProgress.Upgrade.STUDY

@@ -10,6 +10,10 @@ const CONTINUE_BUTTON := Rect2(746, 448, 168, 48)
 
 var phase := Phase.MONOLOGUE
 
+func _ready() -> void:
+	super._ready()
+	Music.play("night")
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
