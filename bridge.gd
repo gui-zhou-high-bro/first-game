@@ -1,6 +1,6 @@
 extends Node2D
 
-enum Phase { WALK, BATTLE, WIN, LOSE }
+enum Phase { INTRO, WALK, BATTLE, WIN, LOSE }
 
 const BACKGROUND = preload("res://huajiang.png")
 const INK = Color("#17292b")
@@ -20,8 +20,15 @@ const ACTIONS = [
 
 var font := SystemFont.new()
 var sfx := AudioStreamPlayer.new()
-var phase := Phase.WALK
-var hero_x := 102.0
+const INTRO = [
+	["上一世 · 集团五十周年庆", "上一世，我白手起家，建起洋芋粑帝国，垄断了全世界的洋芋粑。", "今天集团五十周年。我上台举起一块洋芋粑：这一口，我先来。"],
+	["还是上一世 · 庆典现场", "那块洋芋粑用发了芽的洋芋做的。我吃了一口，当场中毒身亡。", "集团五十周年。创始人没能撑到切蛋糕。"],
+	["这一世 · 贵州花江镇", "我一睁眼，发现自己还在镇上摆摊卖洋芋粑。", "锅里滋啦响了一声。脑子里也响了一声：叮，洋芋粑系统已激活。"],
+]
+
+var phase := Phase.INTRO
+var intro_page := 0
+var hero_x := 130.0
 var facing := 1
 var met_vendor := false
 var crossed := false
@@ -64,6 +71,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_tree().reload_current_scene()
 			KEY_E, KEY_ENTER:
 				_interact()
+			KEY_ESCAPE:
+				if phase == Phase.INTRO:
+					_finish_intro()
 			KEY_1:
 				_act(0)
 			KEY_2:
@@ -81,13 +91,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_interact()
 
 func _interact() -> void:
+	if phase == Phase.INTRO:
+		_advance_intro()
+		return
 	if phase == Phase.LOSE:
 		get_tree().reload_current_scene()
 		return
 	if phase == Phase.WIN:
 		phase = Phase.WALK
 		crossed = true
-		line_one = "摊主：过了桥记得回来付钱！"
+		line_one = "嬢嬢：过了桥记得回来收摊！"
 		line_two = "主角：晓得了！下次我把前半句也唱准。"
 		return
 	if phase != Phase.WALK:
@@ -95,8 +108,8 @@ func _interact() -> void:
 	if hero_x >= 116.0 and hero_x <= 310.0 and not met_vendor:
 		met_vendor = true
 		snacks = 2
-		line_one = "摊主：拿两个洋芋粑。桥上那位要考试，你可别饿着唱。"
-		line_two = "主角：唱跑调咋办？  摊主：你喊一嗓子，后半句我接。"
+		line_one = "嬢嬢：摊我帮你看。锅里刚煎好两个，拿去桥上垫垫肚子。"
+		line_two = "系统：洋芋粑 +2。  嬢嬢：桥头要是考山歌，后半句我接。"
 		_sound(440.0, 660.0, 0.18)
 	elif hero_x >= 610.0 and not crossed:
 		phase = Phase.BATTLE
@@ -106,11 +119,77 @@ func _interact() -> void:
 		line_two = "主角：早知道就从桥底游过去了。"
 		_sound(240.0, 150.0, 0.22)
 	elif crossed and hero_x >= 815.0:
-		line_one = "赶场成功。桥对面的灯亮了，一个熟悉的声音还在喊你。"
+		line_one = "系统：赶集开张任务完成。桥对面的灯亮了。"
 		line_two = "试着按 R 重开，看看能不能换一种打法。"
 	else:
 		line_one = "往前走，到洋芋粑摊或桥头再按 E。"
 		line_two = ""
+
+
+func _advance_intro() -> void:
+	if intro_page == INTRO.size() - 1:
+		_finish_intro()
+		return
+	intro_page += 1
+	elapsed = 0.0
+	if intro_page == 1:
+		_sound(260.0, 80.0, 0.45)
+	else:
+		_sound(330.0, 660.0, 0.3)
+
+func _finish_intro() -> void:
+	phase = Phase.WALK
+	elapsed = 0.0
+	line_one = "你醒在花江镇自己的洋芋粑摊前。锅还热着。"
+	line_two = "系统任务：请隔壁嬢嬢帮忙看摊，再去桥头赶场。"
+
+func _draw_intro() -> void:
+	if intro_page == 2:
+		draw_texture_rect(BACKGROUND, Rect2(0, 0, 960, 540), false)
+		_rect(0, 0, 960, 345, Color("#13272666"))
+		_stall()
+		_person(hero_x, DECK, Color("#4d8e92"), Color("#34494e"), 1, false, 0)
+		_rect(495, 83, 392, 140, INK)
+		_rect(495, 83, 4, 140, MINT)
+		_type("洋芋粑系统  ·  已激活", 518, 120, 19, MINT)
+		_type("身份：镇上摆摊卖洋芋粑的", 518, 156, 17)
+		_type("新手任务：赶集开张", 518, 188, 17, GOLD)
+	else:
+		var poisoned := intro_page == 1
+		_rect(0, 0, 960, 540, Color("#18252d") if poisoned else Color("#3e242b"))
+		_rect(0, 244, 960, 109, Color("#241b26"))
+		_rect(0, 244, 960, 4, Color("#ad6752"))
+		for column in range(7):
+			_rect(60 + column * 140, 58, 3, 130, Color("#663740"))
+			draw_circle(Vector2(60 + column * 140, 55), 3, GOLD)
+		draw_circle(Vector2(480, 181), 104, Color("#f2be7144"))
+		draw_circle(Vector2(480, 181), 87, Color("#a85b43"))
+		draw_circle(Vector2(480, 181), 81, Color("#e9c293"))
+		draw_circle(Vector2(480, 181), 63, Color("#553c3a"))
+		draw_rect(Rect2(438, 163, 84, 36), Color("#bf733c"))
+		draw_rect(Rect2(444, 159, 72, 35), Color("#ebb363"))
+		draw_rect(Rect2(448, 164, 64, 18), Color("#f6cd7f"))
+		for crumb in range(9):
+			_rect(450 + crumb * 7, 174 + (crumb % 3) * 5, 3, 3, Color("#ce8143"))
+		if poisoned:
+			_rect(490, 150, 6, 17, Color("#8aab58"))
+			_rect(495, 149, 9, 5, Color("#a6cd65"))
+			var fade := clampf(elapsed * 0.3, 0.0, 0.6)
+			_rect(0, 0, 960, 344, Color(0.05, 0.07, 0.09, fade))
+		else:
+			_type("洋芋粑帝国", 79, 137, 31, GOLD)
+			_type("集团成立五十周年", 79, 176, 23)
+			_type("50", 733, 183, 92, GOLD)
+
+	var card: Array = INTRO[intro_page]
+	_rect(26, 345, 908, 170, Color("#192b2bf5"))
+	_rect(26, 345, 908, 2, GOLD)
+	_type(card[0], 46, 379, 20, GOLD)
+	_type(card[1], 46, 413, 19)
+	_type(card[2], 46, 444, 17, MINT)
+	_type("Esc 跳过序章", 46, 490, 14, GOLD)
+	_button_frame(Rect2(746, 441, 168, 47), true)
+	_type("E  继续" if intro_page < 2 else "E  开始摆摊", 763, 472, 18)
 
 func _charging() -> bool:
 	return turn % 3 != 1
@@ -237,6 +316,9 @@ func _button_frame(box: Rect2, enabled: bool) -> void:
 	draw_rect(box, GOLD if hover else Color("#57695e"), false, 1)
 
 func _draw() -> void:
+	if phase == Phase.INTRO:
+		_draw_intro()
+		return
 	draw_texture_rect(BACKGROUND, Rect2(0, 0, 960, 540), false)
 	_rect(0, DECK, 960, 11, Color("#522e29"))
 	_rect(0, DECK, 960, 3, Color("#f2b278"))
